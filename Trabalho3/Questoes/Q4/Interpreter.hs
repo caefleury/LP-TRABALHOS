@@ -1,74 +1,75 @@
-module Root.Questoes.Q4.Interpreter where
+module Q4.Interpreter where
 
-import Root.Questoes.Q4.AbsLI
+import Q4.AbsLI
 import Prelude hiding (lookup)
 
-type RContext = [(String,Integer)]
+type RContext = [(String, Integer)]
 type ErrorMessage = String
 
-{- Dica: somente o tipo de executeP precisa mudar (conforme abaixo),
-   mas a sua definicao (corpo) pode continuar a mesma dos exercícios anteriores
--}
 executeP :: RContext -> Program -> Either ErrorMessage RContext
--- executeP context (Prog stm) = execute context stm
-executeP = undefined 
-   
+executeP context (Prog stm) = case execute context stm of
+  Left err -> Left err
+  Right res -> Right res
 
-{- Dica: o tipo de execute deve mudar para 
- execute :: RContext -> Stm -> Either ErrorMessage RContext   
- Alem disso, o corpo dessa funcao deve ser modificado, pois eval
- retorna tipo diferente agora, ou seja, a avaliacao pode falhar
- e, consequentemente o execute tambem. Assim, todos tipos de comandos 
- serao afetados
--}
-execute :: RContext -> Stm -> RContext
-execute context x = case x of
-   SAss id exp -> update context (getStr id) (eval context exp)
-   SBlock [] -> context
-   SBlock (s:stms) -> execute (execute context s) (SBlock stms) 
-   SWhile exp stm -> if ( (eval context exp) /= 0) 
-                      then execute (execute context stm) (SWhile exp stm)
-                      else context
--- Dica: insira aqui o tratamento do STry.
+execute :: RContext -> Stm -> Either ErrorMessage RContext
+execute context (SAss id exp) = do
+  value <- eval context exp
+  Right $ update context (getStr id) value
+execute context (SBlock []) = Right context
+execute context (SBlock (s : stms)) = do
+  res <- execute context s
+  execute res (SBlock stms)
+execute context (SWhile exp stm) = do
+  expValue <- eval context exp
+  if expValue /= 0
+    then do
+      res <- execute context stm
+      execute res (SWhile exp stm)
+    else Right context
+execute context (STry stmsT stmsC stmsF) = case executeTry context stmsT of
+  Left _ -> case executeCatch context stmsC of
+    Left err -> Left err
+    Right res -> executeFinally (update res "soma" 0) stmsF
+  Right res -> executeFinally res stmsF
 
+eval :: RContext -> Exp -> Either ErrorMessage Integer
+eval context (EAdd exp0 exp) = (+) <$> eval context exp0 <*> eval context exp
+eval context (ESub exp0 exp) = (-) <$> eval context exp0 <*> eval context exp
+eval context (EMul exp0 exp) = (*) <$> eval context exp0 <*> eval context exp
+eval context (EDiv exp0 exp) = do
+  expValue <- eval context exp
+  if expValue /= 0
+    then div <$> eval context exp0 <*> pure expValue
+    else Left "Divisão por zero"
+eval _ (EInt n) = Right n
+eval context (EVar id) = Right (lookup context (getStr id))
 
+executeTry :: RContext -> [Stm] -> Either ErrorMessage RContext
+executeTry context [] = Right context
+executeTry context (s : stms) = case execute context s of
+  Left err -> Left err
+  Right res -> executeTry res stms
 
-{- Dica: o tipo de eval deve mudar para
- eval :: RContext -> Exp -> Either ErrorMessage Integer
--}
-eval :: RContext -> Exp -> Integer
-eval context x = case x of
-    EAdd exp0 exp  -> eval context exp0 + eval context exp
-    ESub exp0 exp  -> eval context exp0 - eval context exp
-    EMul exp0 exp  -> eval context exp0 * eval context exp
-    EDiv exp0 exp  -> eval context exp0 `div` eval context exp
-    EInt n  -> n
-    EVar id  -> lookup context (getStr id)
-{-  algumas dicas abaixo...para voce adaptar o codigo acima
-    EDiv e1 e2 -> case eval context e1 of 
-                    Right ve1 -> case eval context e2 of 
-                                   Right ve2 -> if (ve2 == 0)
-                                                 then Left ("divisao por 0 na expressao: " 
-                                                            ++ show (EDiv e1 e2))
-                                                 else Right (ve1 `div` ve2)
-                                  Left msg -> Left msg  
-                    Left msg -> Left msg  
-    EInt n  ->  Right n 
--}                
+executeCatch :: RContext -> [Stm] -> Either ErrorMessage RContext
+executeCatch context stms = execute context (SBlock stms)
 
+executeFinally :: RContext -> [Stm] -> Either ErrorMessage RContext
+executeFinally context [] = Right context
+executeFinally context (stm : stms) = case execute context stm of
+  Left err -> Left err
+  Right res -> executeFinally res stms
 
--- Dica: voce nao precisa mudar o codigo a partir daqui
-   
 getStr :: Ident -> String
 getStr (Ident s) = s
 
 lookup :: RContext -> String -> Integer
-lookup ((i,v):cs) s
-   | i == s = v
-   | otherwise = lookup cs s
+lookup [] _ = error "Variável não encontrada"
+lookup ((i, v) : cs) s
+  | i == s = v
+  | otherwise = lookup cs s
 
 update :: RContext -> String -> Integer -> RContext
-update [] s v = [(s,v)]
-update ((i,v):cs) s nv
-  | i == s = (i,nv):cs
-  | otherwise = (i,v) : update cs s nv
+update [] s v = [(s, v)]
+update ((i, v) : cs) s nv
+  | i == s = (i, nv) : cs
+  | otherwise = (i, v) : update cs s nv
