@@ -5,7 +5,7 @@ import Root.Typechecker.AbsLOO
 import Test.Hspec
 import Data.List (isInfixOf)
 
-Código da Q1
+{- Código da Q1
 
 class Q1 {
     void main ( ) {
@@ -111,7 +111,7 @@ class Cliente {
     }
 } 
 
-
+-}
 
 
 matchesExpectedError :: String -> R TEnvironment -> Bool
