@@ -165,6 +165,8 @@ tk environment@(sc, classCtx) x tR = case x of
           Erro msg -> Erro (msg ++ " no comando: " ++ printTree sIf)
 
 -- DICA: modificando-se a uma linha da função abaixo, resolve-se uma das questões
+
+
 tke :: TEnvironment -> Exp -> Type -> R TEnvironment
 tke environment@(sc, classCtx) exp tp =
   let r = tinf environment exp
@@ -185,6 +187,7 @@ tke environment@(sc, classCtx) exp tp =
                 )
         Erro msg -> Erro msg
 
+
 combChecks :: TEnvironment -> Exp -> Exp -> Type -> R Type
 combChecks environment exp1 exp2 tp =
   let r = tke environment exp1 tp
@@ -195,6 +198,7 @@ combChecks environment exp1 exp2 tp =
                 OK _ -> OK tp
                 Erro msg -> Erro msg
         Erro msg -> Erro msg
+
 -- DICA: na função abaixo, há duas linhas que podem ser modificadas para resolver duas das questões
 tinf :: TEnvironment -> Exp -> R Type
 tinf environment@(_, classCtx) x = case x of
@@ -241,7 +245,7 @@ tinf environment@(_, classCtx) x = case x of
                     )
                     l
                 )
-        Erro msg -> OK Tvoid
+        Erro msg -> Erro $ "Erro QUESTAO4"
       Erro msg -> Erro $ "@typechecker: Erro ao obter informações da classe'" ++ show cid ++ "': " ++ msg
     OK _ -> Erro $ "@typechecker: Não é possível invocar métodos da variável'" ++ show lid ++ "', pois esta não tem o tipo de uma classe"
     Erro msg -> Erro msg
